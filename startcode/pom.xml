@@ -15,7 +15,6 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <javafx.version>17.0.16</javafx.version>
-        <!-- Set to mac-aarch64 or mac-x86_64 depending on your JVM -->
         <javafx.platform>mac-aarch64</javafx.platform>
         <exec.mainClass>nl.han.ica.icss.gui.Main</exec.mainClass>
     </properties>

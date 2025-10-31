@@ -33,7 +33,13 @@ public class Evaluator implements Transform {
 
             if (node instanceof VariableAssignment) {
                 evaluateVariableAssignment((VariableAssignment) node);
-                i++;
+                // Remove variable assignments from the tree (they shouldn't appear in CSS)
+                if (!isTopLevel) {
+                    nodes.remove(i);
+                    // Don't increment i, next element shifts in
+                } else {
+                    i++;
+                }
             } else if (node instanceof Declaration) {
                 evaluateDeclaration((Declaration) node);
                 i++;
@@ -43,14 +49,12 @@ public class Evaluator implements Transform {
             } else if (node instanceof IfClause) {
                 IfClause ifc = (IfClause) node;
 
-                // IfClause at top-level should not be evaluated by the evaluator
                 if (isTopLevel) {
                     ifc.setError("If-expressions are only allowed inside style rules");
                     i++;
                     continue;
                 }
 
-                // evaluate the conditional expression
                 Literal condLit = null;
                 if (ifc.getConditionalExpression() != null) {
                     condLit = evaluateExpression(ifc.getConditionalExpression());
@@ -67,37 +71,24 @@ public class Evaluator implements Transform {
                 }
 
                 if (condTrue) {
-                    variableValues.addFirst(new HashMap<>());
-                    processNodes(ifc.body, false);
-                    variableValues.removeFirst();
-
-                    // replace the IfClause node with its body
                     nodes.remove(i);
                     if (!ifc.body.isEmpty()) {
                         nodes.addAll(i, ifc.body);
-                        i += ifc.body.size();
                     }
                 } else {
                     ElseClause elseC = ifc.getElseClause();
                     if (elseC != null) {
-                        variableValues.addFirst(new HashMap<>());
-                        processNodes(elseC.body, false);
-                        variableValues.removeFirst();
-
+                        // replace the IfClause with else body
                         nodes.remove(i);
                         if (!elseC.body.isEmpty()) {
                             nodes.addAll(i, elseC.body);
-                            i += elseC.body.size();
                         }
                     } else {
-                        // no else: remove the IfClause entirely
                         nodes.remove(i);
-                        // don't increment i, next element shifts in
                     }
                 }
 
             } else {
-                // unknown node type - just skip
                 i++;
             }
         }
@@ -138,17 +129,14 @@ public class Evaluator implements Transform {
     private Literal evaluateExpression(ASTNode node) {
         if (node == null) return null;
 
-        // If it's already a literal, return it
         if (node instanceof Literal) return (Literal) node;
 
-        // Variable reference: look up value in scopes
         if (node instanceof VariableReference) {
             String name = ((VariableReference) node).name;
             Literal val = lookupVariableValue(name);
             return val; // may be null if undefined
         }
 
-        // Operations: evaluate children
         if (node instanceof AddOperation) {
             AddOperation op = (AddOperation) node;
             Literal left = evaluateExpression(op.lhs);
@@ -168,7 +156,6 @@ public class Evaluator implements Transform {
             return evaluateMultiply(left, right);
         }
 
-        // other nodes not evaluable
         return null;
     }
 
@@ -189,7 +176,7 @@ public class Evaluator implements Transform {
             int sum = ((PercentageLiteral) a).value + ((PercentageLiteral) b).value;
             return new PercentageLiteral(sum);
         }
-        // unsupported combinations
+        // unsupported combinaties
         return null;
     }
 
